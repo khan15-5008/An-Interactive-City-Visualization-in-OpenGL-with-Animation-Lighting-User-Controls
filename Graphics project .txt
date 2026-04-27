@@ -1,0 +1,356 @@
+﻿#define NOMINMAX // Fixes Windows macro conflicts
+#include <windows.h>
+#include <GL/glut.h>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <iostream>
+
+
+namespace Config {
+    const int WIN_W = 900;
+    const int WIN_H = 700;
+    const int FPS = 60;
+    const float PI = 3.14159f;
+
+
+    // Coordinate System
+    const float VIEW_X_MIN = -420.0f;
+    const float VIEW_X_MAX = 420.0f;
+    const float VIEW_Y_MIN = -300.0f;
+    const float VIEW_Y_MAX = 300.0f;
+}
+
+
+struct Color {
+    float r, g, b;
+    static Color Lerp(const Color& s, const Color& e, float t) {
+        return { s.r + (e.r - s.r)*t, s.g + (e.g - s.g)*t, s.b + (e.b - s.b)*t };
+    }
+    Color Darken(float factor = 0.7f) const {
+        return { r * factor, g * factor, b * factor };
+    }
+};
+
+
+namespace Palette {
+    const Color SKY_DAY_TOP    = { 0.53f, 0.81f, 0.98f };
+    const Color SKY_DAY_BOT    = { 0.72f, 0.92f, 1.0f };
+    const Color SKY_NIGHT_TOP  = { 0.02f, 0.04f, 0.15f };
+    const Color SKY_NIGHT_BOT  = { 0.05f, 0.12f, 0.25f };
+    const Color TREE_TRUNK     = { 0.45f, 0.25f, 0.07f };
+    const Color TREE_LEAF      = { 0.0f, 0.6f, 0.2f };
+    // New Cloud Colors
+    const Color CLOUD_DAY      = { 0.95f, 0.95f, 1.0f };
+    const Color CLOUD_NIGHT    = { 0.6f, 0.6f, 0.7f };
+}
+
+
+class Graphics {
+public:
+    static void SetColor(const Color& c) { glColor3f(c.r, c.g, c.b); }
+
+
+    static void DrawCircleFilled(float xc, float yc, float r) {
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex2f(xc, yc);
+        for(int i = 0; i <= 360; i += 10) {
+            float theta = i * Config::PI / 180.0f;
+            glVertex2f(xc + r * cos(theta), yc + r * sin(theta));
+        }
+        glEnd();
+    }
+
+
+    static void DrawRectFilled(int x1, int y1, int x2, int y2) {
+        glBegin(GL_QUADS);
+        glVertex2i(x1, y1); glVertex2i(x2, y1);
+        glVertex2i(x2, y2); glVertex2i(x1, y2);
+        glEnd();
+    }
+
+
+    static void DrawQuad(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4) {
+        glBegin(GL_QUADS);
+        glVertex2i(x1, y1); glVertex2i(x2, y2);
+        glVertex2i(x3, y3); glVertex2i(x4, y4);
+        glEnd();
+    }
+};
+
+
+struct State {
+    float globalTime = 0.0f;
+    float carPos = -400.0f;
+    float wheelAngle = 0.0f;
+    float birdPos = -400.0f;
+    float cloudPos = -450.0f; // NEW: Cloud Position
+    bool isNight = false;
+    float dayNightT = 0.0f;
+
+
+    void Update() {
+        globalTime += 0.05f;
+
+
+        // Car Movement
+        carPos += 3.0f;
+        if (carPos > 560) carPos = -560;
+
+
+        // Wheel Rotation
+        wheelAngle -= 0.2f;
+
+
+        // Bird Movement
+        birdPos += 2.0f;
+        if(birdPos > 500) birdPos = -500;
+
+
+        // NEW: Cloud Movement (Slower than birds)
+        cloudPos += 1.0f;
+        if(cloudPos > 550) cloudPos = -550;
+
+
+        // Day/Night Transition
+        if (isNight && dayNightT < 1.0f) dayNightT += 0.01f;
+        if (!isNight && dayNightT > 0.0f) dayNightT -= 0.01f;
+
+
+        // Clamp safely
+        if(dayNightT > 1.0f) dayNightT = 1.0f;
+        if(dayNightT < 0.0f) dayNightT = 0.0f;
+    }
+};
+
+
+class World {
+public:
+    // NEW: Function to draw a cloud
+    static void DrawCloud(float x, float y, bool isNight) {
+        // Choose color based on night mode
+        Color c = isNight ? Palette::CLOUD_NIGHT : Palette::CLOUD_DAY;
+        Graphics::SetColor(c);
+
+
+        // Draw overlapping circles to form a cloud shape
+        Graphics::DrawCircleFilled(x, y, 30);
+        Graphics::DrawCircleFilled(x + 35, y + 5, 25);
+        Graphics::DrawCircleFilled(x - 35, y + 5, 25);
+        Graphics::DrawCircleFilled(x + 20, y - 15, 20);
+        Graphics::DrawCircleFilled(x - 20, y - 15, 20);
+    }
+
+
+    static void DrawBuilding3D(int x, int y, int w, int h, int depth, Color wallColor, float time) {
+        Color sideColor = wallColor.Darken(0.7f);
+        Color topColor = wallColor.Darken(0.85f);
+
+
+        // Front Face
+        Graphics::SetColor(wallColor);
+        Graphics::DrawRectFilled(x, y, x + w, y + h);
+
+
+        // Side Face (Right)
+        Graphics::SetColor(sideColor);
+        Graphics::DrawQuad(x + w, y,
+                           x + w + depth, y + depth/2,
+                           x + w + depth, y + h + depth/2,
+                           x + w, y + h);
+
+
+        // Top Face
+        Graphics::SetColor(topColor);
+        Graphics::DrawQuad(x, y + h,
+                           x + w, y + h,
+                           x + w + depth, y + h + depth/2,
+                           x + depth, y + h + depth/2);
+
+
+        // Windows
+        Color winOn = {1.0f, 0.9f, 0.4f};
+        Color winOff = {0.2f, 0.2f, 0.3f};
+        Color winColor = Color::Lerp(winOff, winOn, time);
+
+
+        Graphics::SetColor(winColor);
+        int rows = 4, cols = 3;
+        int gapX = w / (cols + 1);
+        int gapY = h / (rows + 1);
+        int winW = gapX - 5;
+        int winH = gapY - 5;
+
+
+        for(int r=1; r<=rows; r++) {
+            for(int c=1; c<=cols; c++) {
+                int wx = x + c * gapX - winW/2;
+                int wy = y + r * gapY - winH/2;
+                Graphics::DrawRectFilled(wx, wy, wx + winW, wy + winH);
+            }
+        }
+    }
+
+
+    static void DrawTree(int x, int y, float time) {
+        float sway = sin(time + x * 0.01f) * 5.0f;
+        Graphics::SetColor(Palette::TREE_TRUNK);
+        Graphics::DrawRectFilled(x - 5, y, x + 5, y + 40);
+        Graphics::SetColor(Palette::TREE_LEAF);
+        Graphics::DrawCircleFilled(x + (int)sway, y + 55, 30);
+    }
+
+
+    static void DrawWheel(float cx, float cy, float r, float angle) {
+        Graphics::SetColor({0.1f, 0.1f, 0.1f});
+        Graphics::DrawCircleFilled(cx, cy, r);
+        Graphics::SetColor({0.7f, 0.7f, 0.7f});
+        Graphics::DrawCircleFilled(cx, cy, r - 4);
+        Graphics::SetColor({0.1f, 0.1f, 0.1f});
+
+
+        glLineWidth(2.0f);
+        glBegin(GL_LINES);
+        for(int i=0; i<4; i++) {
+            float theta = angle + (i * Config::PI / 2.0f);
+            glVertex2f(cx, cy);
+            glVertex2f(cx + (r-4) * cos(theta), cy + (r-4) * sin(theta));
+        }
+        glEnd();
+        glLineWidth(1.0f);
+    }
+
+
+    static void DrawBird(float x, float y, float time) {
+        Graphics::SetColor({0.1f, 0.1f, 0.1f});
+        float flap = sin(time * 10.0f) * 10.0f; // Faster flap speed
+        glLineWidth(2.0f);
+        glBegin(GL_LINE_STRIP);
+        glVertex2f(x - 15, y + flap);
+        glVertex2f(x, y);
+        glVertex2f(x + 15, y + flap);
+        glEnd();
+        glLineWidth(1.0f);
+    }
+
+
+    static void RenderScene(const State& state) {
+        // 1. Sky Gradient
+        Color skyTop = Color::Lerp(Palette::SKY_DAY_TOP, Palette::SKY_NIGHT_TOP, state.dayNightT);
+        Color skyBot = Color::Lerp(Palette::SKY_DAY_BOT, Palette::SKY_NIGHT_BOT, state.dayNightT);
+
+
+        glBegin(GL_QUADS);
+            Graphics::SetColor(skyTop); glVertex2i((int)Config::VIEW_X_MIN, 300); glVertex2i((int)Config::VIEW_X_MAX, 300);
+            Graphics::SetColor(skyBot); glVertex2i((int)Config::VIEW_X_MAX, -60); glVertex2i((int)Config::VIEW_X_MIN, -60);
+        glEnd();
+
+
+        // 2. Sun / Moon
+        if (!state.isNight) {
+             Graphics::SetColor({1.0f, 0.8f, 0.0f});
+             Graphics::DrawCircleFilled(300, 220, 35);
+        } else {
+             Graphics::SetColor({0.9f, 0.9f, 0.9f});
+             Graphics::DrawCircleFilled(300, 220, 30);
+        }
+
+
+        // 3. NEW: Clouds (Layered between sky and birds)
+        // Draw multiple clouds using the base cloudPos with offsets
+        DrawCloud(state.cloudPos, 250, state.isNight);
+        DrawCloud(state.cloudPos - 350, 280, state.isNight);
+        DrawCloud(state.cloudPos + 300, 230, state.isNight);
+
+
+        // 4. Birds
+        DrawBird(state.birdPos, 200, state.globalTime);
+        DrawBird(state.birdPos - 50, 220, state.globalTime + 1.2f);
+
+
+        // 5. Buildings
+        DrawBuilding3D(-380, -60, 100, 180, 20, {0.6f, 0.3f, 0.3f}, state.dayNightT);
+        DrawBuilding3D(-240, -60, 80,  220, 15, {0.3f, 0.3f, 0.6f}, state.dayNightT);
+        DrawBuilding3D(-120, -60, 110, 150, 25, {0.3f, 0.6f, 0.3f}, state.dayNightT);
+        DrawBuilding3D( 20,  -60, 120, 250, 20, {0.5f, 0.5f, 0.6f}, state.dayNightT);
+        DrawBuilding3D( 180, -60, 90,  190, 15, {0.6f, 0.5f, 0.3f}, state.dayNightT);
+
+
+        // 6. Road
+        Graphics::SetColor({0.2f, 0.2f, 0.2f});
+        Graphics::DrawRectFilled(-420, -140, 420, -60);
+        // Road Line
+        Graphics::SetColor({1.0f, 1.0f, 1.0f});
+        for(int x=-400; x<400; x+=60) Graphics::DrawRectFilled(x, -105, x+30, -95);
+
+
+        // 7. Trees
+        DrawTree(-300, -60, state.globalTime);
+        DrawTree(-10, -60, state.globalTime);
+        DrawTree(300, -60, state.globalTime);
+
+
+        // 8. Car
+        float cx = state.carPos;
+        float cy = -90;
+        Graphics::SetColor({0.8f, 0.1f, 0.1f});
+        Graphics::DrawRectFilled((int)cx - 40, (int)cy, (int)cx + 40, (int)cy + 30);
+        Graphics::DrawRectFilled((int)cx - 25, (int)cy + 30, (int)cx + 15, (int)cy + 50);
+
+
+        // Wheels
+        DrawWheel(cx - 25, cy, 12, state.wheelAngle);
+        DrawWheel(cx + 25, cy, 12, state.wheelAngle);
+    }
+};
+
+
+State appState;
+
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    World::RenderScene(appState);
+    glutSwapBuffers();
+}
+
+
+void timer(int) {
+    appState.Update();
+    glutPostRedisplay();
+    glutTimerFunc(1000/Config::FPS, timer, 0);
+}
+
+
+void keyboard(unsigned char key, int, int) {
+    if(key == 'n' || key == 'N') appState.isNight = !appState.isNight;
+    if(key == 27) exit(0);
+}
+
+
+void init() {
+    glClearColor(0.7f, 0.9f, 1.0f, 1.0f);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(Config::VIEW_X_MIN, Config::VIEW_X_MAX, Config::VIEW_Y_MIN, Config::VIEW_Y_MAX);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(Config::WIN_W, Config::WIN_H);
+    glutInitWindowPosition(100, 50);
+    glutCreateWindow("City Pro - With Clouds");
+
+
+    init();
+    glutDisplayFunc(display);
+    glutTimerFunc(0, timer, 0);
+    glutKeyboardFunc(keyboard);
+    glutMainLoop();
+    return 0;
+}
