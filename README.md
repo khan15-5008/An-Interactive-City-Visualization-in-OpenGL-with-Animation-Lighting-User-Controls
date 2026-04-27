@@ -1,7 +1,6 @@
+Introduction
+
 The City Scenario project was carried out with C++ and OpenGL, and its modular functions for each object like buildings, cars, trees, birds, and clouds were created. Triangle fan, translation, rotation, and sine animation were used to create smooth and interactive effects. The final scene includes a vibrant transition from day to night, moving cars, birds, and trees that sway, and clouds that float, showcasing the advances in real-time rendering and making animated objects visually appealing.	
-
-
-Implementation
 
 Project Setup
 
@@ -43,16 +42,7 @@ The whole scene is rendered frame by frame using OpenGL primitives: GL_QUADS, GL
 
 Output
 
-The project output is a completely animated city scene visualized through OpenGL. The scene consists of various graphical elements like buildings, cars, trees, clouds, the sun/moon, and birds which are all arranged nicely to make an attractive layout. The animations are in real-time, and they are showing very smoothly such as the movement of cars with rotating wheels, birds flying with flapping wings, clouds moving across the sky, and trees gently swaying. A gradual transition from day to night is shown by changing the sky color and by the lighting of the buildings. User control is made easier with the help of interactive features like Night Mode and Pause/Resume. To sum up, the output presents a complete, animated, and organic city environment that is built by means of OpenGL transformations, animation logic, and rendering techniques. Visual output are shown in fig-1 and fig-2.
-
-
-
-        Fig-01: Day City scene with buildings, sun, clouds, birds, trees, and car animation.
-
-
-
-     Fig-02: Night City scene with buildings, sun, clouds, birds, trees, and car animation.
-
+The project output is a completely animated city scene visualized through OpenGL. The scene consists of various graphical elements like buildings, cars, trees, clouds, the sun/moon, and birds which are all arranged nicely to make an attractive layout. The animations are in real-time, and they are showing very smoothly such as the movement of cars with rotating wheels, birds flying with flapping wings, clouds moving across the sky, and trees gently swaying. A gradual transition from day to night is shown by changing the sky color and by the lighting of the buildings. User control is made easier with the help of interactive features like Night Mode and Pause/Resume. To sum up, the output presents a complete, animated, and organic city environment that is built by means of OpenGL transformations, animation logic, and rendering techniques. 
 
 Discussion
 The project effectively illustrates the use of OpenGL for developing an entire animated 2D city scene. The implementation emphasizes various fundamental concepts of graphics, such as the rendering of shapes, applying transformations, blending colors, and an object-based modeling approach. Through the implementation of GLUT's timer functionality, a smooth loop for frame updates is maintained, thus making the movement of the car, rotating wheels, drifting clouds, flying birds, and swaying trees consistent. The implementation and control of timing and user input are done effectively, enabling interactive control on the user's side via the pause and resume feature, thus providing better control for animating. The implementation of nighttime and automatic headlights functionality introduces realism into the scene and clearly illustrates the benefits of smooth transition effects on user experience. The project not only illustrates learning concepts within CSE422 but also effectively illustrates a learning- based approach, as various graphics concepts have been seamlessly brought together.
