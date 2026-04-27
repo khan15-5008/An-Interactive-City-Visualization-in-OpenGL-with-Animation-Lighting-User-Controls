@@ -43,7 +43,8 @@ The whole scene is rendered frame by frame using OpenGL primitives: GL_QUADS, GL
 Output
 
 The project output is a completely animated city scene visualized through OpenGL. The scene consists of various graphical elements like buildings, cars, trees, clouds, the sun/moon, and birds which are all arranged nicely to make an attractive layout. The animations are in real-time, and they are showing very smoothly such as the movement of cars with rotating wheels, birds flying with flapping wings, clouds moving across the sky, and trees gently swaying. A gradual transition from day to night is shown by changing the sky color and by the lighting of the buildings. User control is made easier with the help of interactive features like Night Mode and Pause/Resume. To sum up, the output presents a complete, animated, and organic city environment that is built by means of OpenGL transformations, animation logic, and rendering techniques. 
-https://github.com/khan15-5008/An-Interactive-City-Visualization-in-OpenGL-with-Animation-Lighting-User-Controls/blob/874a0dccbee6ec8c6763a3fda1c7a631a999c213/IMG_20251212_172837.jpg
+
+https://github.com/khan15-5008/An-Interactive-City-Visualization-in-OpenGL-with-Animation-Lighting-User-Controls/blob/6f80e5b09e0b76dce48933ed5ee8fa4967b2081b/IMG_20251212_172837.jpg
 
 
 Discussion
